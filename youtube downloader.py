@@ -3,7 +3,7 @@ import os
 import time
 
 vid_opts = {
-    'format': 'bv*[vcodec~="^avc1"]+ba[acodec~="^mp4a"]/bestvideo+bestaudio/best',
+    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best',
     'outtmpl': '%(title)s.%(ext)s',
     'ffmpeg_location': './assets/ffmpeg.exe',
     'no_mtime': True,
@@ -15,7 +15,6 @@ vid_opts = {
     'concurrent_fragment_downloads': 128,
 }
 
-
 audio_opts = {
     'format': 'bestaudio/best',
     'outtmpl': '%(title)s.%(ext)s',
@@ -24,7 +23,7 @@ audio_opts = {
     'nocache': False,
     "quiet": True,
     'cookiefile': './assets/youtube.com_cookies.txt',
-    'concurrent_fragment_downloads': 128,
+    'concurrent_fragment_downloads': 256,
     "cachedir": "./cache",
     'postprocessors': [
         {
@@ -42,7 +41,7 @@ audio_fallback_opts = {
     'no_mtime': True,
     'nocache': False,
     'cookiefile': './assets/youtube.com_cookies.txt',
-    'concurrent_fragment_downloads': 32,
+    'concurrent_fragment_downloads': 64,
     "cachedir": "./cache",
     "quiet": True,
     'postprocessors': [
@@ -55,7 +54,7 @@ audio_fallback_opts = {
 }
 
 video_fallback_opts = {
-    'format': 'bestvideo+bestaudio/best',
+    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best',
     'outtmpl': '%(title)s.%(ext)s',
     'ffmpeg_location': './assets/ffmpeg.exe',
     'no_mtime': True,
@@ -76,7 +75,7 @@ search_opts = {
     'nocache': False,
     'extract_flat': True,
     "cachedir": "./cache",
-    'concurrent_fragment_downloads': 32,
+    'concurrent_fragment_downloads': 256,
 }
 
 
@@ -98,7 +97,7 @@ def search(query, total_search=5):
     print(f"[O] Searching '{query}'...\n")
     with yt_dlp.YoutubeDL(search_opts) as searcher:
         results = searcher.extract_info(f"ytsearch{total_search}:{query}", download=False)
-        return results['entries']
+        return results['entries'] # type: ignore
 
 def download(url, only_audio=True):
     options = audio_opts if only_audio else vid_opts
@@ -118,22 +117,27 @@ def download(url, only_audio=True):
             print("Skipping this item")
 
 s = time.time()
-results = search(input("Enter search query: ").strip() or "YouTube")
+search_url = input("do you have the url of the video? (Y/N)").lower()
+if search_url == "n":
+    results = search(input("Enter search query: ").strip() or "YouTube")
 
-for idx, vid in enumerate(results):
-    print(f"{idx}. {vid['title']} (- {vid['channel']})")
+    for idx, vid in enumerate(results):
+        print(f"{idx}. {vid['title']} (- {vid['channel']})")
 
-print()
-choice = int(input("Enter choice: "))
+    print()
+    choice = int(input("Enter choice: "))
+
+    vid_id = results[choice]["id"]
+    url = f"https://www.youtube.com/watch?v={vid_id}"
+
+    print(f"\n[O] Downloading: {results[choice]['title']} (- {results[choice]['channel']})\n")
+else:
+    url = input("Enter URL: ")
+
 a = input("Download only Audio (A) or Video with audio (V)?: ").strip().lower()
 while a not in ('a', 'v'):
     a = input("[!] Invalid choice. Please enter 'A' or 'V': ").strip().lower()
 
-vid_id = results[choice]["id"]
-url = f"https://www.youtube.com/watch?v={vid_id}"
-
-print(f"\n[O] Downloading: {results[choice]['title']} (- {results[choice]['channel']})\n")
 download(url, a == "a")
 
-# print("\n[=] Done")
 print(f"\n[.] Total time: {time.time() - s:.2f} seconds")
