@@ -1,6 +1,5 @@
 import yt_dlp
 import os
-import time
 import pathlib
 import subprocess
 
@@ -18,10 +17,13 @@ class Downloader:
         self.yt_cookies = youtube_cookies_path
         self.sc_cookies = soundcloud_cookies_path
         self.default = default.lower()
+        self.cookies = self.yt_cookies if self.default in ('yt', 'youtube') else self.sc_cookies
         self.init(subs_langs=subs_langs, JS_runtime_path=JS_runtime_path)
     
-    def init(self, subs_langs = ["en.*", 'jp.*'], JS_runtime_path = 'qjs.exe'):
+    def update_cookies(self):
         self.cookies = self.yt_cookies if self.default in ('yt', 'youtube') else self.sc_cookies
+
+    def init(self, subs_langs = ["en.*", 'jp.*'], JS_runtime_path = 'qjs.exe'):
         self.subs_langs = subs_langs
         self.JS_runtime = JS_runtime_path
 
@@ -71,7 +73,7 @@ class Downloader:
                     'key': 'FFmpegMetadata',
                     'add_metadata': {
                         'album': '%(uploader)s', 
-                        'genre': 'YouTube - %(upload_date)s', 
+                        'genre': 'YouTube - %(upload_date)s' if self.cookies == self.yt_cookies else "SoundCloud - %(upload_date)s", 
                     }
                 },
             ],
@@ -139,14 +141,29 @@ class Downloader:
             print(f"Please add \n'ffmpeg.exe'\nand\n'{self.sc_cookies}' or / and '{self.yt_cookies}' files to continue")
             raise FileNotFoundError(f"Please add \n'ffmpeg.exe'\nand\n'{self.sc_cookies}' or / and '{self.yt_cookies}' files to continue")
     
-    def search(self, query, total_search=5, platform='youtube'):
+    def _detect_cookies(self, url):
+        if url.startswith('https://soundcloud') or url.startswith('soundcloud'):
+            self.cookies = self.sc_cookies
+        else:
+            self.cookies = self.yt_cookies
+
+        self.init( self.subs_langs, self.JS_runtime)
+
+    def search(self, query, total_search=5, platform='youtube', detect_cookies = True):
         print(f"[O] Searching '{query}'...\n")
         with yt_dlp.YoutubeDL(self.search_options) as searcher: # type: ignore
             search_query = f"ytsearch{total_search}:{query}" if platform.lower() in ('yt', 'youtube') else f"scsearch{total_search}:{query}"
+            if detect_cookies:
+                self.cookies = self.yt_cookies if platform.lower() in ('yt', 'youtube') else self.sc_cookies
+                self.init()
             results = searcher.extract_info(search_query, download=False)
             return results['entries'] # type: ignore
 
-    def download(self, url, only_audio=True, only_captions=False, captions = True):
+    def download(self, url, only_audio=True, only_captions=False, captions = True, auto_cookies=False):
+
+        if auto_cookies:
+            self._detect_cookies(url)
+
         if only_audio:
             options = self.audio_options
         elif only_captions:
@@ -186,7 +203,7 @@ class Downloader:
 
         except Exception as e:
             print(f"[!] Initial download try failed: {e}")
-            subprocess.run("pip install yt-dlp --upgrade".split())
+            os.system("pip install yt-dlp --upgrade")
             fallback_options = self.audio_fallback_options if only_audio else self.video_fallback_options
             fallback_options["js_runtimes"] = {
             "quickjs": {
