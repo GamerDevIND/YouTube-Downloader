@@ -97,7 +97,6 @@ video_fallback_opts = {
     'concurrent_fragment_downloads': 64,
     'merge_output_format': 'mp4',
     "embedsubtitles": True,
-    
 }
 
 search_opts = {
@@ -144,6 +143,7 @@ def download(url, only_audio=True, only_captions=False):
         options = vid_opts
 
     captions = input('Do you want to download the subtitle as .srt (if avaliable)? (Y / N): ').strip().lower() == 'y'
+    options = options.copy()
     if captions:
         for k, v in subtitles.items():
             options[k] = v
