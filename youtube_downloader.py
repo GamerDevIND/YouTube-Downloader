@@ -238,7 +238,7 @@ class Downloader:
 
             if captions:
                 for k, v in self.subtitles_options.items():
-                    options[k] = v
+                    fallback_options[k] = v
             try:
                 with yt_dlp.YoutubeDL(fallback_options) as fallback:  # type: ignore
                     info = fallback.extract_info(url, download=True)
