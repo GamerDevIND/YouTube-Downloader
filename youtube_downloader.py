@@ -2,6 +2,7 @@ import yt_dlp
 import os
 import pathlib
 import subprocess
+from copy import deepcopy
 
 def loader(d):
     if d['status'] == 'downloading':
@@ -28,11 +29,12 @@ class Downloader:
     
     def _get_cookies(self, platform):
         platform = "".join(platform.split()).lower()
-        cookies = self.cookies_map.get(platform, self.cookies_map.get(self.default, self.sc_cookies))
+        cookies = self.cookies_map.get(platform, self.cookies_map.get(self.default))
         return cookies
 
-    def _create_options(self, cookies):
-        out = '[SC] %(title)s.%(ext)s' if self.platform.lower() in ('sc', 'soundcloud', 'sound cloud') else ('[YT] %(title)s.%(ext)s' if self.platform.lower() in ('yt', 'youtube') else'%(title)s.%(ext)s' )
+    def _create_options(self):
+        out = '[SC] %(title)s.%(ext)s' if self.platform.lower() in ('sc', 'soundcloud', 'sound cloud') else ('[YT] %(title)s.%(ext)s' if self.platform.lower() in ('yt', 'youtube') else'%(title)s.%(ext)s')
+        cookies = self._get_cookies(self.platform)
         self.video_options = {
         'format':'bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[vcodec^=avc1]/best',
         'outtmpl': out,
@@ -78,7 +80,7 @@ class Downloader:
                     'key': 'FFmpegMetadata',
                     'add_metadata': {
                         'album': '%(uploader)s', 
-                        'genre': 'YouTube - %(upload_date)s' if cookies == self.yt_cookies else "SoundCloud - %(upload_date)s", 
+                        'genre': 'YouTube - %(upload_date)s' if self.platform in ('yt', 'youtube') else "SoundCloud - %(upload_date)s", 
                     }
                 },
             ],
@@ -143,7 +145,7 @@ class Downloader:
         self.subs_langs = subs_langs
         self.JS_runtime = JS_runtime_path
 
-        self._create_options(self._get_cookies(self.platform))
+        self._create_options()
 
         if not os.path.exists("./cache"):
             os.mkdir("./cache")
@@ -154,13 +156,15 @@ class Downloader:
     
     def change_platform(self, platform):
         self.platform = platform
-        self._create_options(self._get_cookies(self.platform))
+        self._create_options()
 
-    def _detect_cookies(self, url):
+    def _detect_platform_from_url(self, url:str):
         if url.startswith('https://soundcloud') or url.startswith('soundcloud'):
            self.change_platform("soundcloud")
-        else:
+        elif "youtube.com" in url or "youtu.be" in url or url.startswith(("youtube.com", "youtu.be")):
             self.change_platform("youtube")
+        else:
+            self.change_platform(self.default)
 
     def search(self, query, total_search=5, platform='youtube'):
         print(f"[O] Searching '{query}'...\n")
@@ -173,7 +177,7 @@ class Downloader:
     def download(self, url, only_audio=True, only_captions=False, captions = True, auto_cookies=False):
 
         if auto_cookies:
-            self._detect_cookies(url)
+            self._detect_platform_from_url(url)
 
         if only_audio:
             options = self.audio_options
@@ -184,7 +188,9 @@ class Downloader:
         else:
             options = self.video_options
 
-        options = options.copy()
+        options = deepcopy(options)
+        options['cookiefile'] = self._get_cookies(self.platform) # IDC if its repetitive 
+
         if captions and self.platform in ('yt', 'youtube'):
             for k, v in self.subtitles_options.items():
                 options[k] = v
@@ -197,12 +203,17 @@ class Downloader:
                 ]
 
         options["progress_hooks"] = [loader, dynamic_metadata_hook]
-        options["js_runtimes"] = {
-            "quickjs": {
-                "path": self.JS_runtime
-            },
-            "deno": {}
-        }
+
+        if os.path.exists(self.JS_runtime):
+            options["js_runtimes"] = {
+                "quickjs": {
+                    "path": self.JS_runtime
+                },
+                "deno": {}
+            }
+        else:
+            print('bruh. ensure JS runtime path is valid')
+        
         options['remote_components'] = ['ejs:github']
 
         try:
@@ -214,9 +225,9 @@ class Downloader:
 
         except Exception as e:
             print(f"[!] Initial download try failed: {e}")
-            os.system("pip install yt-dlp --upgrade")
             fallback_options = self.audio_fallback_options if only_audio else self.video_fallback_options
-            fallback_options = fallback_options.copy()
+            fallback_options = deepcopy(fallback_options)
+            fallback_options['cookiefile'] = self._get_cookies(self.platform) # IDC if its repetitive 
             fallback_options["js_runtimes"] = {
             "quickjs": {
                 "path": self.JS_runtime
