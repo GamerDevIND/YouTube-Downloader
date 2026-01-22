@@ -10,26 +10,22 @@ def loader(d):
         print("\n[=] Done!")
 
 class Downloader:
-    def __init__(self, ffmpeg="ffmpeg", ffprobe='ffprobe', youtube_cookies_path='youtube_cookies.txt',  soundcloud_cookies_path='soundcloud_cookies.txt', default = 'youtube',
+    def __init__(self, ffmpeg_path="ffmpeg", ffprobe_path='ffprobe', youtube_cookies_path='youtube_cookies.txt',  soundcloud_cookies_path='soundcloud_cookies.txt', default = 'youtube',
                  subs_langs = ["en.*", 'jp.*'], JS_runtime_path = './assets/qjs.exe') -> None:
-        self.ffmpeg = ffmpeg
-        self.ffprobe = ffprobe
+        self.ffmpeg = ffmpeg_path
+        self.ffprobe = ffprobe_path
         self.yt_cookies = youtube_cookies_path
         self.sc_cookies = soundcloud_cookies_path
-        self.default = default.lower()
-        self.cookies = self.yt_cookies if self.default in ('yt', 'youtube') else self.sc_cookies
+        self.platform = default.lower()
+        self.cookies = self.yt_cookies if self.platform in ('yt', 'youtube') else self.sc_cookies
         self.init(subs_langs=subs_langs, JS_runtime_path=JS_runtime_path)
     
-    def update_cookies(self):
-        self.cookies = self.yt_cookies if self.default in ('yt', 'youtube') else self.sc_cookies
 
-    def init(self, subs_langs = ["en.*", 'jp.*'], JS_runtime_path = 'qjs.exe'):
-        self.subs_langs = subs_langs
-        self.JS_runtime = JS_runtime_path
-
+    def _create_options(self):
+        out = '[SC] %(title)s.%(ext)s' if self.platform.lower() in ('sc', 'soundcloud', 'sound cloud') else ('[YT] %(title)s.%(ext)s' if self.platform.lower() in ('yt', 'youtube') else'%(title)s.%(ext)s' )
         self.video_options = {
         'format':'bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[vcodec^=avc1]/best',
-        'outtmpl': '[SC] %(title)s.%(ext)s' if self.cookies == self.sc_cookies else ('[YT] %(title)s.%(ext)s' if self.cookies == self.yt_cookies else'%(title)s.%(ext)s' ),
+        'outtmpl': out,
         'ffmpeg_location': self.ffmpeg,
         'ffprobe_location':self.ffprobe,
         'no_mtime': True,
@@ -48,12 +44,11 @@ class Downloader:
         "convertsubtitles": "vtt",
         'subtitlesformat': "vtt/srt",
         "embedsubtitles": True,
-        "embedsubtitles": True,
         }
 
         self.audio_options = {
             'format': 'bestaudio/best',
-            'outtmpl': '[SC] %(title)s.%(ext)s' if self.cookies == self.sc_cookies else ('[YT] %(title)s.%(ext)s' if self.cookies == self.yt_cookies else'%(title)s.%(ext)s' ),
+            'outtmpl': out,
             'ffmpeg_location': self.ffmpeg,
             'ffprobe_location':self.ffprobe,
             'no_mtime': True,
@@ -81,7 +76,7 @@ class Downloader:
 
         self.audio_fallback_options = {
             'format': 'bestaudio/best',
-            'outtmpl': '[SC] %(title)s.%(ext)s' if self.cookies == self.sc_cookies else ('[YT] %(title)s.%(ext)s' if self.cookies == self.yt_cookies else'%(title)s.%(ext)s' ),
+            'outtmpl': out,
             'ffmpeg_location': self.ffmpeg,
             'ffprobe_location':self.ffprobe,
             'no_mtime': True,
@@ -109,7 +104,7 @@ class Downloader:
 
         self.video_fallback_options = {
             'format': 'bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[vcodec^=avc1]/best',
-            'outtmpl': '[SC] %(title)s.%(ext)s' if self.cookies == self.sc_cookies else ('[YT] %(title)s.%(ext)s' if self.cookies == self.yt_cookies else'%(title)s.%(ext)s' ),
+            'outtmpl': out,
             'ffmpeg_location': self.ffmpeg,
             'ffprobe_location':self.ffprobe,
             'no_mtime': True,
@@ -124,7 +119,7 @@ class Downloader:
 
         self.search_options = {
             'format': 'bestaudio/best',
-            'outtmpl': '[SC] %(title)s.%(ext)s' if self.cookies == self.sc_cookies else ('[YT] %(title)s.%(ext)s' if self.cookies == self.yt_cookies else'%(title)s.%(ext)s' ),
+            'outtmpl': out,
             'ffmpeg_location': self.ffmpeg,
             'quiet': True,
             'noplaylist': True,
@@ -134,6 +129,12 @@ class Downloader:
             'concurrent_fragment_downloads': 256,
         }
 
+    def init(self, subs_langs = ["en.*", 'jp.*'], JS_runtime_path = 'qjs.exe'):
+        self.subs_langs = subs_langs
+        self.JS_runtime = JS_runtime_path
+
+        self._create_options()
+
         if not os.path.exists("./cache"):
             os.mkdir("./cache")
         if not os.path.exists("./assets"):
@@ -141,6 +142,11 @@ class Downloader:
             print(f"Please add \n'ffmpeg.exe'\nand\n'{self.sc_cookies}' or / and '{self.yt_cookies}' files to continue")
             raise FileNotFoundError(f"Please add \n'ffmpeg.exe'\nand\n'{self.sc_cookies}' or / and '{self.yt_cookies}' files to continue")
     
+    def change_platform(self, platform):
+        self.platform = platform
+        self.cookies = self.yt_cookies if self.platform in ('yt', 'youtube') else self.sc_cookies
+        self._create_options()
+
     def _detect_cookies(self, url):
         if url.startswith('https://soundcloud') or url.startswith('soundcloud'):
             self.cookies = self.sc_cookies
@@ -151,11 +157,9 @@ class Downloader:
 
     def search(self, query, total_search=5, platform='youtube', detect_cookies = True):
         print(f"[O] Searching '{query}'...\n")
+        self.change_platform(platform)
         with yt_dlp.YoutubeDL(self.search_options) as searcher: # type: ignore
-            search_query = f"ytsearch{total_search}:{query}" if platform.lower() in ('yt', 'youtube') else f"scsearch{total_search}:{query}"
-            if detect_cookies:
-                self.cookies = self.yt_cookies if platform.lower() in ('yt', 'youtube') else self.sc_cookies
-                self.init()
+            search_query = f"ytsearch{total_search}:{query}" if self.platform.lower() in ('yt', 'youtube') else f"scsearch{total_search}:{query}"
             results = searcher.extract_info(search_query, download=False)
             return results['entries'] # type: ignore
 
@@ -174,7 +178,7 @@ class Downloader:
             options = self.video_options
 
         options = options.copy()
-        if captions:
+        if captions and self.platform in ('yt', 'youtube'):
             for k, v in self.subtitles_options.items():
                 options[k] = v
 
@@ -205,6 +209,7 @@ class Downloader:
             print(f"[!] Initial download try failed: {e}")
             os.system("pip install yt-dlp --upgrade")
             fallback_options = self.audio_fallback_options if only_audio else self.video_fallback_options
+            fallback_options = fallback_options.copy()
             fallback_options["js_runtimes"] = {
             "quickjs": {
                 "path": self.JS_runtime
@@ -227,7 +232,7 @@ class Downloader:
                 print("Skipping this item")
                 return None
 
-    def _compress_audio(self, input_path):
+    def compress_audio(self, input_path):
         input_path = pathlib.Path(input_path)
         output_path = input_path.with_name(input_path.stem + "_compressed" + input_path.suffix)
         
@@ -247,7 +252,7 @@ class Downloader:
             ], check=True)
         return output_path
 
-    def _compress_mp4(self, input_path):
+    def compress_mp4(self, input_path):
         output_path = pathlib.Path(input_path).with_name(pathlib.Path(input_path).stem + "_compressed.mp4")
         
         subprocess.run([
