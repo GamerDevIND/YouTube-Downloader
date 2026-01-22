@@ -27,7 +27,7 @@ class Downloader:
         self.init(subs_langs=subs_langs, JS_runtime_path=JS_runtime_path)
     
     def _get_cookies(self, platform):
-        platform = "".join(platform.split())
+        platform = "".join(platform.split()).lower()
         cookies = self.cookies_map.get(platform, self.cookies_map.get(self.default, self.sc_cookies))
         return cookies
 
