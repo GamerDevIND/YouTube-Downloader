@@ -12,7 +12,7 @@ def loader(d):
 
 class Downloader:
     def __init__(self, ffmpeg_path="ffmpeg", ffprobe_path='ffprobe', youtube_cookies_path='youtube_cookies.txt',  soundcloud_cookies_path='soundcloud_cookies.txt', default = 'youtube',
-                 subs_langs = ["en.*", 'jp.*'], JS_runtime_path = './assets/qjs.exe') -> None:
+                 subs_langs = ["en.*", 'jp.*'], JS_runtime_path = 'assets/qjs.exe') -> None:
         self.ffmpeg = ffmpeg_path
         self.ffprobe = ffprobe_path
         self.yt_cookies = youtube_cookies_path
@@ -166,9 +166,8 @@ class Downloader:
         else:
             self.change_platform(self.default)
 
-    def search(self, query, total_search=5, platform='youtube'):
+    def search(self, query, total_search=5):
         print(f"[O] Searching '{query}'...\n")
-        self.change_platform(platform)
         with yt_dlp.YoutubeDL(self.search_options) as searcher: # type: ignore
             search_query = f"ytsearch{total_search}:{query}" if self.platform.lower() in ('yt', 'youtube') else f"scsearch{total_search}:{query}"
             results = searcher.extract_info(search_query, download=False)
