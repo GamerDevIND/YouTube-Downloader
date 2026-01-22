@@ -16,12 +16,22 @@ class Downloader:
         self.ffprobe = ffprobe_path
         self.yt_cookies = youtube_cookies_path
         self.sc_cookies = soundcloud_cookies_path
-        self.platform = default.lower()
-        self.cookies = self.yt_cookies if self.platform in ('yt', 'youtube') else self.sc_cookies
+        self.cookies_map = {
+            'yt':self.yt_cookies,
+            'youtube': self.yt_cookies,
+            'sc': self.sc_cookies,
+            'soundcloud': self.sc_cookies
+        }
+        self.default = default
+        self.platform = self.default.lower()
         self.init(subs_langs=subs_langs, JS_runtime_path=JS_runtime_path)
     
+    def _get_cookies(self, platform):
+        platform = "".join(platform.split())
+        cookies = self.cookies_map.get(platform, self.cookies_map.get(self.default, self.sc_cookies))
+        return cookies
 
-    def _create_options(self):
+    def _create_options(self, cookies):
         out = '[SC] %(title)s.%(ext)s' if self.platform.lower() in ('sc', 'soundcloud', 'sound cloud') else ('[YT] %(title)s.%(ext)s' if self.platform.lower() in ('yt', 'youtube') else'%(title)s.%(ext)s' )
         self.video_options = {
         'format':'bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[vcodec^=avc1]/best',
@@ -33,7 +43,7 @@ class Downloader:
         'merge_output_format': 'mp4',
         "quiet": True,
         "cachedir": "./cache",
-        'cookiefile':self.cookies,
+        'cookiefile':cookies,
         'concurrent_fragment_downloads': 256,
         "embedsubtitles": True,
         }
@@ -54,7 +64,7 @@ class Downloader:
             'no_mtime': True,
             'nocache': False,
             "quiet": True,
-            'cookiefile':self.cookies,
+            'cookiefile':cookies,
             'concurrent_fragment_downloads': 256,
             "cachedir": "./cache",
 
@@ -68,7 +78,7 @@ class Downloader:
                     'key': 'FFmpegMetadata',
                     'add_metadata': {
                         'album': '%(uploader)s', 
-                        'genre': 'YouTube - %(upload_date)s' if self.cookies == self.yt_cookies else "SoundCloud - %(upload_date)s", 
+                        'genre': 'YouTube - %(upload_date)s' if cookies == self.yt_cookies else "SoundCloud - %(upload_date)s", 
                     }
                 },
             ],
@@ -81,7 +91,7 @@ class Downloader:
             'ffprobe_location':self.ffprobe,
             'no_mtime': True,
             'nocache': False,
-            'cookiefile':self.cookies,
+            'cookiefile':cookies,
             'concurrent_fragment_downloads': 64,
             "cachedir": "./cache",
             "quiet": True,
@@ -111,7 +121,7 @@ class Downloader:
             'nocache': False,
             "cachedir": "./cache",
             "quiet": True,
-            'cookiefile':self.cookies,
+            'cookiefile':cookies,
             'concurrent_fragment_downloads': 64,
             'merge_output_format': 'mp4',
             "embedsubtitles": True,
@@ -133,7 +143,7 @@ class Downloader:
         self.subs_langs = subs_langs
         self.JS_runtime = JS_runtime_path
 
-        self._create_options()
+        self._create_options(self._get_cookies(self.platform))
 
         if not os.path.exists("./cache"):
             os.mkdir("./cache")
@@ -144,18 +154,15 @@ class Downloader:
     
     def change_platform(self, platform):
         self.platform = platform
-        self.cookies = self.yt_cookies if self.platform in ('yt', 'youtube') else self.sc_cookies
-        self._create_options()
+        self._create_options(self._get_cookies(self.platform))
 
     def _detect_cookies(self, url):
         if url.startswith('https://soundcloud') or url.startswith('soundcloud'):
-            self.cookies = self.sc_cookies
+           self.change_platform("soundcloud")
         else:
-            self.cookies = self.yt_cookies
+            self.change_platform("youtube")
 
-        self.init( self.subs_langs, self.JS_runtime)
-
-    def search(self, query, total_search=5, platform='youtube', detect_cookies = True):
+    def search(self, query, total_search=5, platform='youtube'):
         print(f"[O] Searching '{query}'...\n")
         self.change_platform(platform)
         with yt_dlp.YoutubeDL(self.search_options) as searcher: # type: ignore
