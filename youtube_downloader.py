@@ -137,7 +137,7 @@ class Downloader:
             'noplaylist': True,
             'nocache': False,
             'extract_flat': True,
-        5cttc5r    "cachedir": "./cache",
+            "cachedir": "./cache",
             'concurrent_fragment_downloads': 256,
         }
 
