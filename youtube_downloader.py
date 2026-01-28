@@ -141,7 +141,7 @@ class Downloader:
             'concurrent_fragment_downloads': 256,
         }
 
-    def update_dlp(self): subprocess.run("pip install yt-dlp --upgrade".split())
+    def update_dlp(self, pip_reference= "pip"): subprocess.run(f"{pip_reference} install yt-dlp --upgrade".split())
 
     def init(self, subs_langs = ["en.*", 'jp.*'], QJS_runtime_path = 'qjs.exe'):
         self.subs_langs = subs_langs
