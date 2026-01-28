@@ -161,7 +161,7 @@ class Downloader:
         self._create_options()
 
     def _detect_platform_from_url(self, url:str):
-        if url.startswith('https://soundcloud') or url.startswith('soundcloud'):
+        if url.startswith('https://soundcloud') or url.startswith('soundcloud') or url.startswith('http://soundcloud'):
            self.change_platform("soundcloud")
         elif "youtube.com" in url or "youtu.be" in url or url.startswith(("youtube.com", "youtu.be")):
             self.change_platform("youtube")
