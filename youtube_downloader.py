@@ -145,7 +145,7 @@ class Downloader:
 
     def init(self, subs_langs = ["en.*", 'jp.*'], QJS_runtime_path = 'qjs.exe'):
         self.subs_langs = subs_langs
-        self.QJS_runtime = JS_runtime_path
+        self.QJS_runtime = QJS_runtime_path
 
         self._create_options()
 
@@ -205,7 +205,7 @@ class Downloader:
 
         options["progress_hooks"] = [loader, dynamic_metadata_hook]
 
-        if os.path.exists(self.JS_runtime):
+        if os.path.exists(self.QJS_runtime):
             options["js_runtimes"] = {
                 "quickjs": {
                     "path": self.JS_runtime
