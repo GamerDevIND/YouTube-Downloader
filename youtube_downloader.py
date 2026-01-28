@@ -12,7 +12,7 @@ def loader(d):
 
 class Downloader:
     def __init__(self, ffmpeg_path="ffmpeg", ffprobe_path='ffprobe', youtube_cookies_path='youtube_cookies.txt',  soundcloud_cookies_path='soundcloud_cookies.txt', default = 'youtube',
-                 subs_langs = ["en.*", 'jp.*'], JS_runtime_path = 'assets/qjs.exe') -> None:
+                 subs_langs = ["en.*", 'jp.*'], QuickJS_runtime_path = 'assets/qjs.exe') -> None:
         self.ffmpeg = ffmpeg_path
         self.ffprobe = ffprobe_path
         self.yt_cookies = youtube_cookies_path
@@ -25,7 +25,7 @@ class Downloader:
         }
         self.default = default
         self.platform = self.default.lower()
-        self.init(subs_langs=subs_langs, JS_runtime_path=JS_runtime_path)
+        self.init(subs_langs=subs_langs, QJS_runtime_path=QuickJS_runtime_path)
     
     def _get_cookies(self, platform):
         platform = "".join(platform.split()).lower()
@@ -143,9 +143,9 @@ class Downloader:
 
     def update_dlp(self): subprocess.run("pip install yt-dlp --upgrade".split())
 
-    def init(self, subs_langs = ["en.*", 'jp.*'], JS_runtime_path = 'qjs.exe'):
+    def init(self, subs_langs = ["en.*", 'jp.*'], QJS_runtime_path = 'qjs.exe'):
         self.subs_langs = subs_langs
-        self.JS_runtime = JS_runtime_path
+        self.QJS_runtime = JS_runtime_path
 
         self._create_options()
 
@@ -231,7 +231,7 @@ class Downloader:
             fallback_options['cookiefile'] = self._get_cookies(self.platform) # IDC if its repetitive 
             fallback_options["js_runtimes"] = {
             "quickjs": {
-                "path": self.JS_runtime
+                "path": self.QJS_runtime
             },
             "deno": {}
             }
