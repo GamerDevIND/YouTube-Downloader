@@ -154,7 +154,7 @@ class Downloader:
         if not os.path.exists("./assets"):
             os.mkdir("./assets")
             print(f"Please add \n'ffmpeg.exe'\nand\n'{self.sc_cookies}' or / and '{self.yt_cookies}' files to continue")
-            raise FileNotFoundError(f"Please add \n'ffmpeg.exe'\nand\n'{self.sc_cookies}' or / and '{self.yt_cookies}' files to continue")
+            raise FileNotFoundError(f"Please add \n'ffmpeg.exe'\nand\n'{self.sc_cookies}' or / and '{self.yt_cookies}' files to continue (you may ignore this warning if you have the FFMPEG and / or FFPROBE and don't want to use cookies.)")
     
     def change_platform(self, platform):
         self.platform = platform
@@ -182,6 +182,9 @@ class Downloader:
 
         if only_audio:
             options = self.audio_options
+            if only_captions: 
+                for k, v in self.subtitles_options.items():
+                    options[k] = v 
         elif only_captions:
             options = deepcopy(self.subtitles_options)
             options['outtmpl'] = '%(title)s.%(ext)s'
