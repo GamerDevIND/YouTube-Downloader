@@ -183,6 +183,7 @@ class Downloader:
         if only_audio:
             options = self.audio_options
             if only_captions: 
+                options = deepcopy(options)
                 for k, v in self.subtitles_options.items():
                     options[k] = v 
         elif only_captions:
