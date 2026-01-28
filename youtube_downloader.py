@@ -183,7 +183,7 @@ class Downloader:
         if only_audio:
             options = self.audio_options
         elif only_captions:
-            options = self.subtitles_options
+            options = deepcopy(self.subtitles_options)
             options['outtmpl'] = '%(title)s.%(ext)s'
             options['skip_download'] = True
         else:
@@ -208,7 +208,7 @@ class Downloader:
         if os.path.exists(self.QJS_runtime):
             options["js_runtimes"] = {
                 "quickjs": {
-                    "path": self.JS_runtime
+                    "path": self.QJS_runtime
                 },
                 "deno": {}
             }
