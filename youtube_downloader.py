@@ -1,290 +1,55 @@
-import yt_dlp
-import os
-import pathlib
-import subprocess
-from copy import deepcopy
+from configs import *
+from youtube_downloader import Downloader
 
-def loader(d):
-    if d['status'] == 'downloading':
-        print(f"\r[>] Downloading: {d['_percent_str']} @ {d['_speed_str']}", end='')
-    elif d['status'] == 'finished':
-        print("\n[=] Done!")
+if __name__ == '__main__':
+    d = Downloader(ffmpeg_path=ffmpeg_location, ffprobe_path=ffprobe_location, youtube_cookies_path=yt_cookies_location, 
+                   soundcloud_cookies_path=sc_cookies_location, QuickJS_runtime_path=JS_runtime_path)
+    if input("Do you have the url of the video / audio (Y / N): ").lower().strip() == 'y':
+        url = input("Please provide the URL of the media: ")
+        if "youtube.com" in url or "youtu.be" in url or url.startswith(("youtube.com", "youtu.be")):
 
-class Downloader:
-    def __init__(self, ffmpeg_path="ffmpeg", ffprobe_path='ffprobe', youtube_cookies_path='youtube_cookies.txt',  soundcloud_cookies_path='soundcloud_cookies.txt', default = 'youtube',
-                 subs_langs = ["en.*", 'jp.*'], QuickJS_runtime_path = 'assets/qjs.exe') -> None:
-        self.ffmpeg = ffmpeg_path
-        self.ffprobe = ffprobe_path
-        self.yt_cookies = youtube_cookies_path
-        self.sc_cookies = soundcloud_cookies_path
-        self.cookies_map = {
-            'yt':self.yt_cookies,
-            'youtube': self.yt_cookies,
-            'sc': self.sc_cookies,
-            'soundcloud': self.sc_cookies
-        }
-        self.default = default
-        self.platform = self.default.lower()
-        self.init(subs_langs=subs_langs, QJS_runtime_path=QuickJS_runtime_path)
-    
-    def _get_cookies(self, platform):
-        platform = "".join(platform.split()).lower()
-        cookies = self.cookies_map.get(platform, self.cookies_map.get(self.default))
-        return cookies
+            a = input("Download only Audio (A) or Video with audio (V) or just captions (C)?: ").strip().lower()
+            c = True # assume yes, because this aint open source and i like subtitles
+            while a not in ('a', 'v', 'c'):
+                a = input("[!] Invalid choice. Please enter 'A', 'V', or 'C': ").strip().lower()
+                
+            if a !='c':
+                c = input("Do you want to download the captions too (if avaliable)? (Y / N): ").lower().strip() == 'y'
 
-    def _create_options(self):
-        out = '[SC] %(title)s.%(ext)s' if self.platform.lower() in ('sc', 'soundcloud', 'sound cloud') else ('[YT] %(title)s.%(ext)s' if self.platform.lower() in ('yt', 'youtube') else'%(title)s.%(ext)s')
-        cookies = self._get_cookies(self.platform)
-        self.video_options = {
-        'format':'bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[vcodec^=avc1]/best',
-        'outtmpl': out,
-        'ffmpeg_location': self.ffmpeg,
-        'ffprobe_location':self.ffprobe,
-        'no_mtime': True,
-        'nocache': False,
-        'merge_output_format': 'mp4',
-        "quiet": True,
-        "cachedir": "./cache",
-        'cookiefile':cookies,
-        'concurrent_fragment_downloads': 256,
-        "embedsubtitles": True,
-        }
-
-        self.subtitles_options = {
-        "writesubtitles": True,
-        "subtitleslangs": self.subs_langs,
-        "convertsubtitles": "vtt",
-        'subtitlesformat': "vtt/srt",
-        "embedsubtitles": True,
-        }
-
-        self.audio_options = {
-            'format': 'bestaudio/best',
-            'outtmpl': out,
-            'ffmpeg_location': self.ffmpeg,
-            'ffprobe_location':self.ffprobe,
-            'no_mtime': True,
-            'nocache': False,
-            "quiet": True,
-            'cookiefile':cookies,
-            'concurrent_fragment_downloads': 256,
-            "cachedir": "./cache",
-
-            'postprocessors': [
-                {
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '320'
-                },
-                {
-                    'key': 'FFmpegMetadata',
-                    'add_metadata': {
-                        'album': '%(uploader)s', 
-                        'genre': 'YouTube - %(upload_date)s' if self.platform in ('yt', 'youtube') else "SoundCloud - %(upload_date)s", 
-                    }
-                },
-            ],
-        }
-
-        self.audio_fallback_options = {
-            'format': 'bestaudio/best',
-            'outtmpl': out,
-            'ffmpeg_location': self.ffmpeg,
-            'ffprobe_location':self.ffprobe,
-            'no_mtime': True,
-            'nocache': False,
-            'cookiefile':cookies,
-            'concurrent_fragment_downloads': 64,
-            "cachedir": "./cache",
-            "quiet": True,
+            d.download(url,  a=='a', a == 'c', c, True)
+        elif url.startswith('https://soundcloud') or url.startswith('soundcloud'):
+            d.download(url, True, False, False, True)
+        else:
+            print('Invalid URL.')
+    else:
+        d.change_platform(input("Please provide a platform to search (soundcloud / youtube): ").strip().lower())
+        results = d.search(input("Enter search query: ") or "Cats")
+        
+        if d.platform in ('yt', 'youtube'):
+            for idx, vid in enumerate(results):
+                if 'duration' in vid.keys():
+                    print(f"{idx}. {vid['title']} (- {vid['channel']}) [{vid['duration']}s]")
+                else:
+                    print(f"{idx}. {vid['title']} (- {vid['channel']})")
             
-            'postprocessors': [
-                {
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192'
-                },
-                {
-                    'key': 'FFmpegMetadata',
-                    'add_metadata': {
-                        'album': '%(uploader)s', 
-                        'genre': 'YouTube - %(upload_date)s', 
-                    }
-                },
-            ],
-        }
+            choice = int(input("Enter choice: "))
+            vid_id = results[choice]["id"]
+            url = f"https://www.youtube.com/watch?v={vid_id}"
+            a = input("Download only Audio (A) or Video with audio (V) or just captions (C)?: ").strip().lower()
+            while a not in ('a', 'v', 'c'):
+                a = input("[!] Invalid choice. Please enter 'A', 'V', or 'C': ").strip().lower()
+                c = False
+                if a !='c':
+                    c = input("Do you want to download the captions too (if avaliable)? (Y / N): ").lower().strip() == 'y'
 
-        self.video_fallback_options = {
-            'format': 'bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[vcodec^=avc1]/best',
-            'outtmpl': out,
-            'ffmpeg_location': self.ffmpeg,
-            'ffprobe_location':self.ffprobe,
-            'no_mtime': True,
-            'nocache': False,
-            "cachedir": "./cache",
-            "quiet": True,
-            'cookiefile':cookies,
-            'concurrent_fragment_downloads': 64,
-            'merge_output_format': 'mp4',
-            "embedsubtitles": True,
-        }
-
-        self.search_options = {
-            'format': 'bestaudio/best',
-            'outtmpl': out,
-            'ffmpeg_location': self.ffmpeg,
-            'quiet': True,
-            'noplaylist': True,
-            'nocache': False,
-            'extract_flat': True,
-            "cachedir": "./cache",
-            'concurrent_fragment_downloads': 256,
-        }
-
-    def update_dlp(self, pip_reference= "pip"): subprocess.run(f"{pip_reference} install yt-dlp --upgrade".split())
-
-    def init(self, subs_langs = ["en.*", 'jp.*'], QJS_runtime_path = 'qjs.exe'):
-        self.subs_langs = subs_langs
-        self.QJS_runtime = QJS_runtime_path
-
-        self._create_options()
-
-        if not os.path.exists("./cache"):
-            os.mkdir("./cache")
-        if not os.path.exists("./assets"):
-            os.mkdir("./assets")
-            print(f"Please add \n'ffmpeg.exe'\nand\n'{self.sc_cookies}' or / and '{self.yt_cookies}' files to continue")
-            raise FileNotFoundError(f"Please add \n'ffmpeg.exe'\nand\n'{self.sc_cookies}' or / and '{self.yt_cookies}' files to continue (you may ignore this warning if you have the FFMPEG and / or FFPROBE and don't want to use cookies.)")
-    
-    def change_platform(self, platform):
-        self.platform = platform
-        self._create_options()
-
-    def _detect_platform_from_url(self, url:str):
-        if url.startswith('https://soundcloud') or url.startswith('soundcloud') or url.startswith('http://soundcloud'):
-           self.change_platform("soundcloud")
-        elif "youtube.com" in url or "youtu.be" in url or url.startswith(("youtube.com", "youtu.be")):
-            self.change_platform("youtube")
+            d.download(url,  a=='a', a == 'c', c)
         else:
-            self.change_platform(self.default)
-
-    def search(self, query, total_search=5):
-        print(f"[O] Searching '{query}'...\n")
-        with yt_dlp.YoutubeDL(self.search_options) as searcher: # type: ignore
-            search_query = f"ytsearch{total_search}:{query}" if self.platform.lower() in ('yt', 'youtube') else f"scsearch{total_search}:{query}"
-            results = searcher.extract_info(search_query, download=False)
-            return results['entries'] # type: ignore
-
-    def download(self, url, only_audio=True, only_captions=False, captions = True, auto_cookies=False):
-
-        if auto_cookies:
-            self._detect_platform_from_url(url)
-
-        if only_audio:
-            options = self.audio_options
-            if only_captions: 
-                options = deepcopy(options)
-                for k, v in self.subtitles_options.items():
-                    options[k] = v 
-        elif only_captions:
-            options = deepcopy(self.subtitles_options)
-            options['outtmpl'] = '%(title)s.%(ext)s'
-            options['skip_download'] = True
-        else:
-            options = self.video_options
-
-        options = deepcopy(options)
-        options['cookiefile'] = self._get_cookies(self.platform) # IDC if its repetitive 
-
-        if captions and self.platform in ('yt', 'youtube'):
-            for k, v in self.subtitles_options.items():
-                options[k] = v
-
-        def dynamic_metadata_hook(d):
-            if d['status'] == 'finished':
-                artist_name = d.get('uploader', 'Unknown Artist')
-                d['postprocessor_args'] = [
-                    '-metadata', f'artist={artist_name}'
-                ]
-
-        options["progress_hooks"] = [loader, dynamic_metadata_hook]
-
-        if os.path.exists(self.QJS_runtime):
-            options["js_runtimes"] = {
-                "quickjs": {
-                    "path": self.QJS_runtime
-                },
-                "deno": {}
-            }
-        else:
-            print('bruh. ensure JS runtime path is valid')
-        
-        options['remote_components'] = ['ejs:github']
-
-        try:
-            with yt_dlp.YoutubeDL(options) as ydl:  # type: ignore
-                info = ydl.extract_info(url, download=True)
-                file_path = ydl.prepare_filename(info)
-                print(f"\n[√] Saved to: {os.path.abspath(file_path)}")
-                return file_path
-
-        except Exception as e:
-            print(f"[!] Initial download try failed: {e}")
-            fallback_options = self.audio_fallback_options if only_audio else self.video_fallback_options
-            fallback_options = deepcopy(fallback_options)
-            fallback_options['cookiefile'] = self._get_cookies(self.platform) # IDC if its repetitive 
-            fallback_options["js_runtimes"] = {
-            "quickjs": {
-                "path": self.QJS_runtime
-            },
-            "deno": {}
-            }
-            fallback_options['remote_components'] = ['ejs:github']
-
-            if captions:
-                for k, v in self.subtitles_options.items():
-                    fallback_options[k] = v
-            try:
-                with yt_dlp.YoutubeDL(fallback_options) as fallback:  # type: ignore
-                    info = fallback.extract_info(url, download=True)
-                    file_path = fallback.prepare_filename(info)
-                    print(f"\n[√] Saved (fallback) to: {os.path.abspath(file_path)}")
-                    return file_path
-            except Exception as e2:
-                print(f"[X] Fallback also failed: {e2}")
-                print("Skipping this item")
-                return None
-
-    def compress_audio(self, input_path):
-        input_path = pathlib.Path(input_path)
-        output_path = input_path.with_name(input_path.stem + "_compressed" + input_path.suffix)
-        
-        if input_path.suffix.lower() in [".wav", ".flac"]:
-            subprocess.run([
-                self.ffmpeg,
-                "-i", str(input_path),
-                "-compression_level", "12",
-                str(output_path)
-            ], check=True)
-        else:
-            subprocess.run([
-                self.ffmpeg,
-                "-i", str(input_path),
-                "-b:a", "192k",
-                str(output_path)
-            ], check=True)
-        return output_path
-
-    def compress_mp4(self, input_path):
-        output_path = pathlib.Path(input_path).with_name(pathlib.Path(input_path).stem + "_compressed.mp4")
-        
-        subprocess.run([
-        self.ffmpeg,
-            "-i", str(input_path),
-            "-c:v", "libx264",
-            "-preset", "slow",
-            "-crf", "18", 
-            "-c:a", "copy",
-            str(output_path)
-        ], check=True)
-        return output_path
+            for idx, vid in enumerate(results):
+                if 'duration' in vid.keys():
+                    print(f"{idx}. {vid['title']} (- {vid['uploader']}) [{vid['duration']}s]")
+                else:
+                    print(f"{idx}. {vid['title']} (- {vid['uploader']})")
+            
+            choice = int(input("Enter choice: "))
+            url = results[choice]['url']
+            d.download(url, True, False, False)
