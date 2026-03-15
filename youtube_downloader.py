@@ -141,7 +141,8 @@ class Downloader:
             'concurrent_fragment_downloads': 256,
         }
 
-    def update_dlp(self, pip_reference= "pip"): subprocess.run(f"{pip_reference} install yt-dlp --upgrade".split())
+    def update_dlp(self, pip_reference= "pip"): 
+        subprocess.run(f"{pip_reference} install yt-dlp --upgrade".split())
 
     def init(self, subs_langs = ["en.*", 'jp.*'], QJS_runtime_path = 'qjs.exe'):
         self.subs_langs = subs_langs
@@ -161,7 +162,7 @@ class Downloader:
         self._create_options()
 
     def _detect_platform_from_url(self, url:str):
-        if url.startswith('https://soundcloud') or url.startswith('soundcloud') or url.startswith('http://soundcloud'):
+        if url.startswith('https://soundcloud') or url.startswith('soundcloud') or url.startswith('http://soundcloud') or 'soundcloud' in url:
            self.change_platform("soundcloud")
         elif "youtube.com" in url or "youtu.be" in url or url.startswith(("youtube.com", "youtu.be")):
             self.change_platform("youtube")
