@@ -95,7 +95,7 @@ class Downloader:
             'no_mtime': True,
             'nocache': False,
             'cookiefile':cookies,
-            'concurrent_fragment_downloads': self.download_workers // 4 if ,
+            'concurrent_fragment_downloads': self.download_workers // 4,
             "cachedir": "./cache",
             "quiet": True,
             
