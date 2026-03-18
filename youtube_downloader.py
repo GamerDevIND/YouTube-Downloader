@@ -11,12 +11,13 @@ def loader(d):
         print("\n[=] Done!")
 
 class Downloader:
-    def __init__(self, ffmpeg_path="ffmpeg", ffprobe_path='ffprobe', youtube_cookies_path='youtube_cookies.txt',  soundcloud_cookies_path='soundcloud_cookies.txt', default = 'youtube',
+    def __init__(self, ffmpeg_path="ffmpeg", ffprobe_path='ffprobe', download_workers = 256, youtube_cookies_path='youtube_cookies.txt',  soundcloud_cookies_path='soundcloud_cookies.txt', default = 'youtube',
                  subs_langs = ["en.*", 'jp.*'], QuickJS_runtime_path = 'assets/qjs.exe') -> None:
         self.ffmpeg = ffmpeg_path
         self.ffprobe = ffprobe_path
         self.yt_cookies = youtube_cookies_path
         self.sc_cookies = soundcloud_cookies_path
+        self.download_workers = download_workers
         self.cookies_map = {
             'yt':self.yt_cookies,
             'youtube': self.yt_cookies,
@@ -46,7 +47,7 @@ class Downloader:
         "quiet": True,
         "cachedir": "./cache",
         'cookiefile':cookies,
-        'concurrent_fragment_downloads': 256,
+        'concurrent_fragment_downloads': self.download_workers,
         "embedsubtitles": True,
         }
 
@@ -67,7 +68,7 @@ class Downloader:
             'nocache': False,
             "quiet": True,
             'cookiefile':cookies,
-            'concurrent_fragment_downloads': 256,
+            'concurrent_fragment_downloads': self.download_workers,
             "cachedir": "./cache",
 
             'postprocessors': [
@@ -94,7 +95,7 @@ class Downloader:
             'no_mtime': True,
             'nocache': False,
             'cookiefile':cookies,
-            'concurrent_fragment_downloads': 64,
+            'concurrent_fragment_downloads': self.download_workers // 4 if ,
             "cachedir": "./cache",
             "quiet": True,
             
@@ -124,7 +125,7 @@ class Downloader:
             "cachedir": "./cache",
             "quiet": True,
             'cookiefile':cookies,
-            'concurrent_fragment_downloads': 64,
+            'concurrent_fragment_downloads': self.download_workers // 4,
             'merge_output_format': 'mp4',
             "embedsubtitles": True,
         }
@@ -138,7 +139,7 @@ class Downloader:
             'nocache': False,
             'extract_flat': True,
             "cachedir": "./cache",
-            'concurrent_fragment_downloads': 256,
+            'concurrent_fragment_downloads': self.download_workers,
         }
 
     def update_dlp(self, pip_reference= "pip"): 
