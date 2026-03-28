@@ -12,7 +12,7 @@ def loader(d):
 
 class Downloader:
     def __init__(self, ffmpeg_path="ffmpeg", ffprobe_path='ffprobe', download_workers = 256, youtube_cookies_path='youtube_cookies.txt',  soundcloud_cookies_path='soundcloud_cookies.txt', default = 'youtube',
-                 subs_langs = ["en.*", 'jp.*'], QuickJS_runtime_path = 'assets/qjs.exe') -> None:
+                 subs_langs = ["en.*", 'jp.*'], QuickJS_runtime_path = 'assets/qjs.exe', cache_dir = "./cache") -> None:
         self.ffmpeg = ffmpeg_path
         self.ffprobe = ffprobe_path
         self.yt_cookies = youtube_cookies_path
@@ -26,6 +26,7 @@ class Downloader:
         }
         self.default = default
         self.platform = self.default.lower()
+        self.cache_dir = cache_dir
         self.init(subs_langs=subs_langs, QJS_runtime_path=QuickJS_runtime_path)
     
     def _get_cookies(self, platform):
@@ -45,7 +46,7 @@ class Downloader:
         'nocache': False,
         'merge_output_format': 'mp4',
         "quiet": True,
-        "cachedir": "./cache",
+        "cachedir": self.cache_dir,
         'cookiefile':cookies,
         'concurrent_fragment_downloads': self.download_workers,
         "embedsubtitles": True,
@@ -69,7 +70,7 @@ class Downloader:
             "quiet": True,
             'cookiefile':cookies,
             'concurrent_fragment_downloads': self.download_workers,
-            "cachedir": "./cache",
+            "cachedir": self.cache_dir,
 
             'postprocessors': [
                 {
@@ -96,7 +97,7 @@ class Downloader:
             'nocache': False,
             'cookiefile':cookies,
             'concurrent_fragment_downloads': self.download_workers // 4,
-            "cachedir": "./cache",
+            "cachedir": self.cache_dir,
             "quiet": True,
             
             'postprocessors': [
@@ -122,7 +123,7 @@ class Downloader:
             'ffprobe_location':self.ffprobe,
             'no_mtime': True,
             'nocache': False,
-            "cachedir": "./cache",
+            "cachedir": self.cache_dir,
             "quiet": True,
             'cookiefile':cookies,
             'concurrent_fragment_downloads': self.download_workers // 4,
@@ -138,7 +139,7 @@ class Downloader:
             'noplaylist': True,
             'nocache': False,
             'extract_flat': True,
-            "cachedir": "./cache",
+            "cachedir": self.cache_dir,
             'concurrent_fragment_downloads': self.download_workers,
         }
 
