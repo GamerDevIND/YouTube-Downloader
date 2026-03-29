@@ -4,20 +4,17 @@ import pathlib
 import subprocess
 from copy import deepcopy
 
-def loader(d):
-    if d['status'] == 'downloading':
-        print(f"\r[>] Downloading: {d['_percent_str']} @ {d['_speed_str']}", end='')
-    elif d['status'] == 'finished':
-        print("\n[=] Done!")
+YOUTUBE = ('yt', 'youtube')
 
 class Downloader:
     def __init__(self, ffmpeg_path="ffmpeg", ffprobe_path='ffprobe', download_workers = 256, youtube_cookies_path='youtube_cookies.txt',  soundcloud_cookies_path='soundcloud_cookies.txt', default = 'youtube',
-                 subs_langs = ["en.*", 'jp.*'], QuickJS_runtime_path = 'assets/qjs.exe', cache_dir = "./cache") -> None:
+                 subs_langs = ["en.*", 'jp.*'], QuickJS_runtime_path = 'assets/qjs.exe', cache_dir = "./cache", UI_loading_callback = None) -> None:
         self.ffmpeg = ffmpeg_path
         self.ffprobe = ffprobe_path
         self.yt_cookies = youtube_cookies_path
         self.sc_cookies = soundcloud_cookies_path
         self.download_workers = download_workers
+        self.UI_loading_callback = UI_loading_callback
         self.cookies_map = {
             'yt':self.yt_cookies,
             'youtube': self.yt_cookies,
@@ -33,21 +30,25 @@ class Downloader:
         platform = "".join(platform.split()).lower()
         cookies = self.cookies_map.get(platform, self.cookies_map.get(self.default))
         return cookies
+    
+    def _base_options(self):
+        return {
+            'ffmpeg_location': self.ffmpeg,
+            'ffprobe_location': self.ffprobe,
+            'no_mtime': True,
+            'nocache': False,
+            "quiet": True,
+            "cachedir": self.cache_dir,
+            'cookiefile': self._get_cookies(self.platform),
+        }
 
     def _create_options(self):
-        out = '[SC] %(title)s.%(ext)s' if self.platform.lower() in ('sc', 'soundcloud', 'sound cloud') else ('[YT] %(title)s.%(ext)s' if self.platform.lower() in ('yt', 'youtube') else'%(title)s.%(ext)s')
+        out = '[SC] %(title)s.%(ext)s' if self.platform.lower() in ('sc', 'soundcloud', 'sound cloud') else ('[YT] %(title)s.%(ext)s' if self.platform.lower() in YOUTUBE else'%(title)s.%(ext)s')
         cookies = self._get_cookies(self.platform)
-        self.video_options = {
+        self.video_options = self._base_options() | {
         'format':'bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[vcodec^=avc1]/best',
         'outtmpl': out,
-        'ffmpeg_location': self.ffmpeg,
-        'ffprobe_location':self.ffprobe,
-        'no_mtime': True,
-        'nocache': False,
         'merge_output_format': 'mp4',
-        "quiet": True,
-        "cachedir": self.cache_dir,
-        'cookiefile':cookies,
         'concurrent_fragment_downloads': self.download_workers,
         "embedsubtitles": True,
         }
@@ -60,17 +61,10 @@ class Downloader:
         "embedsubtitles": True,
         }
 
-        self.audio_options = {
+        self.audio_options = self._base_options() | {
             'format': 'bestaudio/best',
             'outtmpl': out,
-            'ffmpeg_location': self.ffmpeg,
-            'ffprobe_location':self.ffprobe,
-            'no_mtime': True,
-            'nocache': False,
-            "quiet": True,
-            'cookiefile':cookies,
             'concurrent_fragment_downloads': self.download_workers,
-            "cachedir": self.cache_dir,
 
             'postprocessors': [
                 {
@@ -82,23 +76,16 @@ class Downloader:
                     'key': 'FFmpegMetadata',
                     'add_metadata': {
                         'album': '%(uploader)s', 
-                        'genre': 'YouTube - %(upload_date)s' if self.platform in ('yt', 'youtube') else "SoundCloud - %(upload_date)s", 
+                        'genre': 'YouTube - %(upload_date)s' if self.platform in YOUTUBE else "SoundCloud - %(upload_date)s", 
                     }
                 },
             ],
         }
 
-        self.audio_fallback_options = {
+        self.audio_fallback_options = self._base_options() | {
             'format': 'bestaudio/best',
             'outtmpl': out,
-            'ffmpeg_location': self.ffmpeg,
-            'ffprobe_location':self.ffprobe,
-            'no_mtime': True,
-            'nocache': False,
-            'cookiefile':cookies,
             'concurrent_fragment_downloads': self.download_workers // 4,
-            "cachedir": self.cache_dir,
-            "quiet": True,
             
             'postprocessors': [
                 {
@@ -116,30 +103,18 @@ class Downloader:
             ],
         }
 
-        self.video_fallback_options = {
+        self.video_fallback_options = self._base_options() | {
             'format': 'bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[vcodec^=avc1]/best',
             'outtmpl': out,
-            'ffmpeg_location': self.ffmpeg,
-            'ffprobe_location':self.ffprobe,
-            'no_mtime': True,
-            'nocache': False,
-            "cachedir": self.cache_dir,
-            "quiet": True,
-            'cookiefile':cookies,
             'concurrent_fragment_downloads': self.download_workers // 4,
             'merge_output_format': 'mp4',
             "embedsubtitles": True,
         }
 
-        self.search_options = {
+        self.search_options = self._base_options() | {
             'format': 'bestaudio/best',
             'outtmpl': out,
-            'ffmpeg_location': self.ffmpeg,
-            'quiet': True,
-            'noplaylist': True,
-            'nocache': False,
             'extract_flat': True,
-            "cachedir": self.cache_dir,
             'concurrent_fragment_downloads': self.download_workers,
         }
 
@@ -174,7 +149,7 @@ class Downloader:
     def search(self, query, total_search=5):
         print(f"[O] Searching '{query}'...\n")
         with yt_dlp.YoutubeDL(self.search_options) as searcher: # type: ignore
-            search_query = f"ytsearch{total_search}:{query}" if self.platform.lower() in ('yt', 'youtube') else f"scsearch{total_search}:{query}"
+            search_query = f"ytsearch{total_search}:{query}" if self.platform.lower() in YOUTUBE else f"scsearch{total_search}:{query}"
             results = searcher.extract_info(search_query, download=False)
             return results['entries'] # type: ignore
 
@@ -199,7 +174,7 @@ class Downloader:
         options = deepcopy(options)
         options['cookiefile'] = self._get_cookies(self.platform) # IDC if its repetitive 
 
-        if captions and self.platform in ('yt', 'youtube'):
+        if captions and self.platform in YOUTUBE:
             for k, v in self.subtitles_options.items():
                 options[k] = v
 
@@ -210,7 +185,9 @@ class Downloader:
                     '-metadata', f'artist={artist_name}'
                 ]
 
-        options["progress_hooks"] = [loader, dynamic_metadata_hook]
+        options["progress_hooks"] = [dynamic_metadata_hook]
+        if self.UI_loading_callback:
+            options["progress_hooks"].append(self.UI_loading_callback)
 
         if os.path.exists(self.QJS_runtime):
             options["js_runtimes"] = {
