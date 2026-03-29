@@ -119,7 +119,7 @@ class Downloader:
         }
 
     def update_dlp(self, pip_reference= "pip"): 
-        subprocess.run(f"{pip_reference} install yt-dlp --upgrade".split())
+        subprocess.run([pip_reference, "install", "yt-dlp", "--upgrade"])
 
     def init(self, subs_langs = ["en.*", 'jp.*'], QJS_runtime_path = 'qjs.exe'):
         self.subs_langs = subs_langs
