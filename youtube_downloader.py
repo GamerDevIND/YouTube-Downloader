@@ -85,7 +85,7 @@ class Downloader:
         self.audio_fallback_options = self._base_options() | {
             'format': 'bestaudio/best',
             'outtmpl': out,
-            'concurrent_fragment_downloads': self.download_workers // 4,
+            'concurrent_fragment_downloads': max(self.download_workers // 4, 1),
             
             'postprocessors': [
                 {
@@ -106,7 +106,7 @@ class Downloader:
         self.video_fallback_options = self._base_options() | {
             'format': 'bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[vcodec^=avc1]/best',
             'outtmpl': out,
-            'concurrent_fragment_downloads': self.download_workers // 4,
+            'concurrent_fragment_downloads': max(self.download_workers // 4, 1),
             'merge_output_format': 'mp4',
             "embedsubtitles": True,
         }
